@@ -1,0 +1,2 @@
+#!/bin/bash
+echo "DigIntel installed! Use it by typing: digintel"

@@ -1,0 +1,146 @@
+#!/usr/bin/env python3
+
+import os
+import socket
+import subprocess
+import requests
+import re
+from datetime import datetime
+
+OUTFILE = f"digintel_report_{int(datetime.now().timestamp())}.txt"
+
+BOLD = '\033[1m'
+NORMAL = '\033[0m'
+GREEN = '\033[92m'
+BLUE = '\033[94m'
+RED = '\033[91m'
+CYAN = '\033[96m'
+
+def log_and_print(msg):
+    print(msg)
+    with open(OUTFILE, 'a') as f:
+        f.write(msg + '\n')
+
+def banner():
+    os.system('clear')
+    print(CYAN + r"""
+██████╗ ██╗ ██████╗ ██╗███╗   ██╗████████╗███████╗██╗
+██╔══██╗██║██╔════╝ ██║████╗  ██║╚══██╔══╝██╔════╝██║
+██║  ██║██║██║  ███╗██║██╔██╗ ██║   ██║   █████╗  ██║
+██║  ██║██║██║   ██║██║██║╚██╗██║   ██║   ██╔══╝  ██║
+██████╔╝██║╚██████╔╝██║██║ ╚████║   ██║   ███████╗███████╗
+╚═════╝ ╚═╝ ╚═════╝ ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚══════╝╚══════╝
+""" + NORMAL)
+    print(f"{BLUE}Welcome to DigIntel – Python OSINT Recon Toolkit{NORMAL}")
+    print(f"Report will be saved to: {OUTFILE}\n")
+
+def whois_lookup(domain):
+    log_and_print(f"\n{GREEN}[+] WHOIS Lookup:{NORMAL}")
+    result = subprocess.getoutput(f"whois {domain}")
+    for line in result.splitlines():
+        if any(keyword in line for keyword in ["Domain", "Registrar", "Creation", "Name Server"]):
+            log_and_print(line.strip())
+
+def resolve_ip(domain):
+    log_and_print(f"\n{GREEN}[+] IP Address:{NORMAL}")
+    try:
+        ip = socket.gethostbyname(domain)
+        log_and_print(ip)
+        return ip
+    except socket.gaierror:
+        log_and_print("Failed to resolve domain.")
+        return None
+
+def reverse_dns(ip):
+    log_and_print(f"\n{GREEN}[+] Reverse DNS:{NORMAL}")
+    try:
+        host = socket.gethostbyaddr(ip)
+        log_and_print(host[0])
+    except Exception:
+        log_and_print("No PTR record found.")
+
+def http_headers(domain):
+    log_and_print(f"\n{GREEN}[+] HTTP Headers:{NORMAL}")
+    try:
+        res = requests.head(f"http://{domain}", timeout=5)
+        for k, v in res.headers.items():
+            if k.lower().startswith(("server", "content-type", "x-")):
+                log_and_print(f"{k}: {v}")
+    except Exception as e:
+        log_and_print(f"Error: {e}")
+
+def dns_records(domain):
+    log_and_print(f"\n{GREEN}[+] DNS Records:{NORMAL}")
+    for rtype in ["A", "MX", "TXT", "NS"]:
+        log_and_print(f"\n--- {rtype} ---")
+        result = subprocess.getoutput(f"dig {domain} {rtype} +short")
+        log_and_print(result.strip())
+
+def ask_nmap_mode():
+    print(f"""{CYAN}
+Choose Nmap Scan Type:
+[1] Top 1000 Ports Scan (fast)
+[2] Full TCP Scan with Version Detection
+[3] Full TCP & UDP Scan (slow)
+[4] OS Fingerprinting
+{NORMAL}""")
+    choice = input("Select an option [1-4]: ").strip()
+    return choice
+
+def port_scan(ip):
+    log_and_print(f"\n{GREEN}[+] Nmap Advanced Scan:{NORMAL}")
+    scan_type = ask_nmap_mode()
+
+    if scan_type == '1':
+        command = f"nmap -T4 --top-ports 1000 {ip}"
+    elif scan_type == '2':
+        command = f"nmap -sS -sV -T4 -p- {ip}"
+    elif scan_type == '3':
+        command = f"nmap -sS -sU -T4 -p- {ip}"
+    elif scan_type == '4':
+        command = f"nmap -O {ip}"
+    else:
+        log_and_print("Invalid selection. Skipping advanced scan.")
+        return
+
+    log_and_print(f"Running: {command}\n")
+    result = subprocess.getoutput(command)
+    log_and_print(result)
+
+def subdomain_enum(domain):
+    log_and_print(f"\n{GREEN}[+] Basic Subdomain Enumeration:{NORMAL}")
+    subs = ["www", "mail", "dev", "test", "api", "admin", "shop", "ftp", "ns1", "ns2", "blog", "staging", "beta"]
+    for sub in subs:
+        full = f"{sub}.{domain}"
+        try:
+            ip = socket.gethostbyname(full)
+            log_and_print(f"{full} -> {ip}")
+        except:
+            pass
+
+def social_lookup(domain):
+    log_and_print(f"\n{GREEN}[+] Social Media Pattern Check:{NORMAL}")
+    try:
+        res = requests.get(f"https://{domain}", timeout=5).text
+        matches = re.findall(r'https://(?:www\.)?(twitter|facebook|linkedin|instagram)\.com/[^\s"\']+', res)
+        for match in sorted(set(matches)):
+            log_and_print(match)
+    except Exception as e:
+        log_and_print(f"Error: {e}")
+
+def main():
+    banner()
+    domain = input(f"{BOLD}Enter target domain (e.g., example.com): {NORMAL}")
+    whois_lookup(domain)
+    ip = resolve_ip(domain)
+    if ip:
+        reverse_dns(ip)
+        http_headers(domain)
+        dns_records(domain)
+        port_scan(ip)
+        subdomain_enum(domain)
+        social_lookup(domain)
+    log_and_print(f"\n{BLUE}[✓] DigIntel Recon Complete. Report saved to {OUTFILE}{NORMAL}")
+
+if __name__ == "__main__":
+    main()
