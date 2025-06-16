@@ -1,17 +1,24 @@
-# 🔎 DigIntel – Advanced OSINT Recon Toolkit
-DigIntel - Advanced OSINT Recon Toolkit based on Python. A CLI-based OSINT recon tool for ethical hackers and researchers. Includes WHOIS, DNS, port scanning, headers, and social footprinting.
+> 🔎 **Welcome to DigIntel** — a powerful and advanced OSINT reconnaissance toolkit designed for **Ethical Hackers**, **Bug Bounty Hunters**, and **Information Security Researchers**. Gain deeper insights, uncover hidden data, and elevate your recon game.
 
-**Author**: Aqeel Chishti  
-**License**: MIT  
+---
+
+## 👤 Author
+
+- **Name:** Aqeel Ur Rehman Chishti  
+- **Role:** Information Security Researcher & OSINT Enthusiast  
+- **GitHub:** [eagleyeee/digintel](https://github.com/eagleyeee/digintel)  
+- **LinkedIn:** [linkedin.com/in/aqeelchishti](https://linkedin.com/in/aqeelchishti)  
+
+---
 
 ## 🧰 Features
-- WHOIS Lookup
-- DNS Records
-- Reverse DNS
-- HTTP Headers
-- Social Media Link Finder
-- Advanced Nmap Scan (Full, UDP, OS detection)
-- Report saved locally
+
+- 🗂️ WHOIS Lookup  
+- 🌐 DNS Records  
+- 🔁 Reverse DNS  
+- 🧾 HTTP Headers  
+- 🔍 Nmap Scanning (Top Ports, Full Scan, UDP Scan, OS Detection)  
+- 🌍 Subdomain Enumeration
 
 ## 🖥️ Usage
 ```bash

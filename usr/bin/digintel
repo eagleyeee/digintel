@@ -22,33 +22,53 @@ def log_and_print(msg):
         f.write(msg + '\n')
 
 def banner():
-    os.system('clear')
-    print(CYAN + r"""
-                                                                      
-@@@@@@@   @@@   @@@@@@@@  @@@  @@@  @@@  @@@@@@@  @@@@@@@@  @@@       
-@@@@@@@@  @@@  @@@@@@@@@  @@@  @@@@ @@@  @@@@@@@  @@@@@@@@  @@@       
-@@!  @@@  @@!  !@@        @@!  @@!@!@@@    @@!    @@!       @@!       
-!@!  @!@  !@!  !@!        !@!  !@!!@!@!    !@!    !@!       !@!       
-@!@  !@!  !!@  !@! @!@!@  !!@  @!@ !!@!    @!!    @!!!:!    @!!       
-!@!  !!!  !!!  !!! !!@!!  !!!  !@!  !!!    !!!    !!!!!:    !!!       
-!!:  !!!  !!:  :!!   !!:  !!:  !!:  !!!    !!:    !!:       !!:       
-:!:  !:!  :!:  :!:   !::  :!:  :!:  !:!    :!:    :!:        :!:      
- :::: ::   ::   ::: ::::   ::   ::   ::     ::     :: ::::   :: ::::  
-:: :  :   :     :: :: :   :    ::    :      :     : :: ::   : :: : :  
-                                                                      
+    print(BLUE + r"""
+
+@@@@@@@   @@@   @@@@@@@@  @@@  @@@  @@@  @@@@@@@  @@@@@@@@  @@@
+@@@@@@@@  @@@  @@@@@@@@@  @@@  @@@@ @@@  @@@@@@@  @@@@@@@@  @@@
+@@!  @@@  @@!  !@@        @@!  @@!@!@@@    @@!    @@!       @@!
+!@!  @!@  !@!  !@!        !@!  !@!!@!@!    !@!    !@!       !@!
+@!@  !@!  !!@  !@! @!@!@  !!@  @!@ !!@!    @!!    @!!!:!    @!!
+!@!  !!!  !!!  !!! !!@!!  !!!  !@!  !!!    !!!    !!!!!:    !!!
+!!:  !!!  !!:  :!!   !!:  !!:  !!:  !!!    !!:    !!:       !!:
+:!:  !:!  :!:  :!:   !::  :!:  :!:  !:!    :!:    :!:        :!:
+ :::: ::   ::   ::: ::::   ::   ::   ::     ::     :: ::::   :: ::::
+:: :  :   :     :: :: :   :    ::    :      :     : :: ::   : :: : :
+
 """ + NORMAL)
-    print(f"{BLUE}Welcome to DigIntel – Python OSINT Recon Toolkit{NORMAL}")
-    print(f"Report will be saved to: {OUTFILE}\n")
+    print(f"{BLUE}")
+    print(f"{BLUE}🔎 Welcome to DigIntel - Advanced OSINT Reconnaissance Toolkit for Ethical Hackers, Bug Bounty Hunters, and Security Researchers.")
+    print(f"{BLUE}")
+    print("╔═════════════════════════════════════════════════════════╗")
+    print("║                                                         ║")
+    print(f"║  👤 {BOLD}Author: Aqeel Ur Rehman Chishti                     ║")
+    print(f"║  🧠 {BOLD}Information Security Researcher & OSINT Enthusiast  ║")
+    print(f"║  🌐 {BOLD}GitHub: https://github.com/eagleyeee/digintel       ║")
+    print(f"║  🔗 {BOLD}LinkedIn: https://linkedin.com/in/aqeelchishti      ║")
+    print("║                                                         ║")
+    print("╚═════════════════════════════════════════════════════════╝")
+    print(f"{NORMAL}")
+
+    print(f"{BOLD}{BLUE}🧰 Features:")
+    print("                         ")
+    print(f"{NORMAL}  • WHOIS Lookup")
+    print(f"{NORMAL}  • DNS Records")
+    print(f"{NORMAL}  • Reverse DNS")
+    print(f"{NORMAL}  • HTTP Headers")
+    print(f"{NORMAL}  • NMAP Scan (Top Ports, Full, UDP, OS Detection)")
+    print(f"{NORMAL}  • Subdomain Enumeration")
+    print("                                      ")
+    print(f"{NORMAL}Report will be save to: {GREEN}{OUTFILE}\n")
 
 def whois_lookup(domain):
-    log_and_print(f"\n{GREEN}[+] WHOIS Lookup:{NORMAL}")
+    log_and_print(f"\n{BLUE}[+] WHOIS Lookup:{GREEN}")
     result = subprocess.getoutput(f"whois {domain}")
     for line in result.splitlines():
         if any(keyword in line for keyword in ["Domain", "Registrar", "Creation", "Name Server"]):
             log_and_print(line.strip())
 
 def resolve_ip(domain):
-    log_and_print(f"\n{GREEN}[+] IP Address:{NORMAL}")
+    log_and_print(f"\n{BLUE}[+] IP Address:{GREEN}")
     try:
         ip = socket.gethostbyname(domain)
         log_and_print(ip)
@@ -58,63 +78,22 @@ def resolve_ip(domain):
         return None
 
 def reverse_dns(ip):
-    log_and_print(f"\n{GREEN}[+] Reverse DNS:{NORMAL}")
+    log_and_print(f"\n{BLUE}[+] Reverse DNS:{GREEN}")
     try:
         host = socket.gethostbyaddr(ip)
         log_and_print(host[0])
     except Exception:
         log_and_print("No PTR record found.")
 
-def http_headers(domain):
-    log_and_print(f"\n{GREEN}[+] HTTP Headers:{NORMAL}")
-    try:
-        res = requests.head(f"http://{domain}", timeout=5)
-        for k, v in res.headers.items():
-            if k.lower().startswith(("server", "content-type", "x-")):
-                log_and_print(f"{k}: {v}")
-    except Exception as e:
-        log_and_print(f"Error: {e}")
-
 def dns_records(domain):
-    log_and_print(f"\n{GREEN}[+] DNS Records:{NORMAL}")
+    log_and_print(f"\n{BLUE}[+] DNS Records:{GREEN}")
     for rtype in ["A", "MX", "TXT", "NS"]:
         log_and_print(f"\n--- {rtype} ---")
         result = subprocess.getoutput(f"dig {domain} {rtype} +short")
         log_and_print(result.strip())
 
-def ask_nmap_mode():
-    print(f"""{CYAN}
-Choose Nmap Scan Type:
-[1] Top 1000 Ports Scan (fast)
-[2] Full TCP Scan with Version Detection
-[3] Full TCP & UDP Scan (slow)
-[4] OS Fingerprinting
-{NORMAL}""")
-    choice = input("Select an option [1-4]: ").strip()
-    return choice
-
-def port_scan(ip):
-    log_and_print(f"\n{GREEN}[+] Nmap Advanced Scan:{NORMAL}")
-    scan_type = ask_nmap_mode()
-
-    if scan_type == '1':
-        command = f"nmap -T4 --top-ports 1000 {ip}"
-    elif scan_type == '2':
-        command = f"nmap -sS -sV -T4 -p- {ip}"
-    elif scan_type == '3':
-        command = f"nmap -sS -sU -T4 -p- {ip}"
-    elif scan_type == '4':
-        command = f"nmap -O {ip}"
-    else:
-        log_and_print("Invalid selection. Skipping advanced scan.")
-        return
-
-    log_and_print(f"Running: {command}\n")
-    result = subprocess.getoutput(command)
-    log_and_print(result)
-
 def subdomain_enum(domain):
-    log_and_print(f"\n{GREEN}[+] Basic Subdomain Enumeration:{NORMAL}")
+    log_and_print(f"\n{BLUE}[+] Subdomain Enumeration:{GREEN}")
     subs = ["www", "mail", "dev", "test", "api", "admin", "shop", "ftp", "ns1", "ns2", "blog", "staging", "beta"]
     for sub in subs:
         full = f"{sub}.{domain}"
@@ -124,29 +103,66 @@ def subdomain_enum(domain):
         except:
             pass
 
-def social_lookup(domain):
-    log_and_print(f"\n{GREEN}[+] Social Media Pattern Check:{NORMAL}")
+def http_headers(domain):
+    log_and_print(f"\n{BLUE}[+] HTTP Headers:{GREEN}")
     try:
-        res = requests.get(f"https://{domain}", timeout=5).text
-        matches = re.findall(r'https://(?:www\.)?(twitter|facebook|linkedin|instagram)\.com/[^\s"\']+', res)
-        for match in sorted(set(matches)):
-            log_and_print(match)
+        res = requests.head(f"http://{domain}", timeout=5)
+        for k, v in res.headers.items():
+            if k.lower().startswith(("server", "content-type", "x-")):
+                log_and_print(f"{k}: {v}")
     except Exception as e:
         log_and_print(f"Error: {e}")
 
+def ask_nmap_mode():
+    print(f"""{CYAN}
+Choose Nmap Scan Type:
+[0] Default
+[1] Top 1000 Ports Scan (fast)
+[2] Full TCP Scan with Version Detection
+[3] Full TCP & UDP Scan (slow)
+[4] OS Fingerprinting
+""")
+    choice = input("Select an option [0-4]: ").strip()
+    print(f"{NORMAL}")
+    return choice
+
+def nmap_scan(ip):
+    log_and_print(f"\n{BLUE}[+] NMAP Scan:{GREEN}")
+    scan_type = ask_nmap_mode()
+    if scan_type == '0':
+        command = f"nmap -v {ip}"
+    elif scan_type == '1':
+        command = f"nmap -T4 -v --top-ports 1000 {ip}"
+    elif scan_type == '2':
+        command = f"nmap -v -sS -sV -T4 -p- {ip}"
+    elif scan_type == '3':
+        command = f"nmap -v -sS -sU -T4 -p- {ip}"
+    elif scan_type == '4':
+        command = f"nmap -v -O {ip}"
+    else:
+        log_and_print("Invalid selection. Scan skipped.")
+        return
+
+    log_and_print(f"{GREEN}Running: {command}\n")
+    result = subprocess.getoutput(command)
+    log_and_print(result)
+
 def main():
-    banner()
-    domain = input(f"{BOLD}Enter target domain (e.g., example.com): {NORMAL}")
-    whois_lookup(domain)
-    ip = resolve_ip(domain)
-    if ip:
-        reverse_dns(ip)
-        http_headers(domain)
-        dns_records(domain)
-        port_scan(ip)
-        subdomain_enum(domain)
-        social_lookup(domain)
-    log_and_print(f"\n{BLUE}[✓] DigIntel Recon Complete. Report saved to {OUTFILE}{NORMAL}")
+    try:
+        banner()
+        domain = input(f"{BOLD}{RED}Enter Target Domain [example.com]: {NORMAL}")
+        whois_lookup(domain)
+        ip = resolve_ip(domain)
+        if ip:
+                reverse_dns(ip)
+                dns_records(domain)
+                subdomain_enum(domain)
+                http_headers(domain)
+                nmap_scan(ip)
+        log_and_print(f"\n{BLUE}{BOLD}[✓] DigIntel Reconnaissance Complete. Report saved to {OUTFILE}{NORMAL}")
+    except KeyboardInterrupt:
+        print(f"\n\n{RED}[!] Scan canceled. Partial results saved to {OUTFILE}.{NORMAL}")
+        exit(0)
 
 if __name__ == "__main__":
     main()
