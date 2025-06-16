@@ -1,4 +1,4 @@
-# 🔎 **Welcome to DigIntel** — a powerful and advanced OSINT reconnaissance toolkit designed for **Ethical Hackers**, **Bug Bounty Hunters**, and **Information Security Researchers**. Gain deeper insights, uncover hidden data, and elevate your recon game.
+# 🔎 **Welcome to DigIntel** - A powerful and advanced OSINT reconnaissance toolkit designed for **Ethical Hackers**, **Bug Bounty Hunters**, and **Information Security Researchers**. Gain deeper insights, uncover hidden data, and elevate your recon game.
 
 ---
 
