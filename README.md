@@ -23,5 +23,9 @@
 - 🌍 Subdomain Enumeration
 
 ## 🖥️ Usage
+
+```bash
+sudo apt install ./digintel-1.0.0.deb
+
 ```bash
 digintel
