@@ -1,4 +1,4 @@
-![DigIntel Banner](https://ucarecdn.com/68cbf751-302b-4789-9f06-291c1cd3dd7f/Screenshot_20250616_2344220.png)
+![DigIntel Banner](https://ucarecdn.com/69d897a7-1865-452d-8407-801319ae05b7/digintelimage.png)
 
 ## 🔎 **DigIntel** 
 
