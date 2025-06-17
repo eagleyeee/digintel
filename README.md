@@ -26,7 +26,7 @@ DigIntel is an advanced, comprehensive OSINT (Open-Source Intelligence) reconnai
 
 1. Install .deb package:
 ```bash
-sudo apt install ./digintel-1.0.0.deb
+sudo apt install ./digintel-1.0.2.deb
 ```
 
 2. Then start:
