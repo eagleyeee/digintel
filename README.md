@@ -2,8 +2,7 @@
 
 ## 🔎 **DigIntel** 
 
-A powerful and advanced OSINT reconnaissance toolkit designed for **Ethical Hackers**, **Bug Bounty Hunters**, and **Information Security Researchers**. Gain deeper insights, uncover hidden data, and elevate your recon game.
-
+DigIntel is an advanced OSINT reconnaissance toolkit written in Python, developed for **Ethical Hackers**, **Bug Bounty Hunters**, and **Information Security Researchers**. Gain deeper insights, uncover hidden data, and elevate your recon game.
 
 ## 👤 Author
 

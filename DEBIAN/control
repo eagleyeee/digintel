@@ -1,9 +1,8 @@
 Package: digintel
-Version: 1.0.0
+Version: 1.0.2
 Section: utils
 Priority: optional
 Architecture: all
 Depends: python3, curl, whois, dnsutils, net-tools
 Maintainer: Aqeel Ur Rehman Chishti <aqeel.chishti@outlook.com>
-Description: DigIntel - Advanced OSINT Recon Toolkit in Python
- A CLI-based OSINT recon tool for ethical hackers and researchers. Includes WHOIS, DNS, port scanning, headers, and social footprinting.
+Description: DigIntel is an advanced OSINT reconnaissance toolkit written in Python, developed for Ethical Hackers, Bug Bounty Hunters, and Information Security Researchers. Gain deeper insights, uncover hidden data, and elevate your recon game.

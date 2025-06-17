@@ -37,7 +37,7 @@ def banner():
 
 """ + NORMAL)
     print(f"{BLUE}")
-    print(f"{BLUE}🔎 Welcome to DigIntel - Advanced OSINT Reconnaissance Toolkit for Ethical Hackers, Bug Bounty Hunters, and Security Researchers.")
+    print(f"{BLUE}🔎 Welcome to DigIntel - An advanced OSINT reconnaissance toolkit written in Python, developed for Ethical Hackers, Bug Bounty Hunters, and Information Security Researchers. Gain deeper insights, uncover hidden data, and elevate your recon game.")
     print(f"{BLUE}")
     print("╔═════════════════════════════════════════════════════════╗")
     print("║                                                         ║")
