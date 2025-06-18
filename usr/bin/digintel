@@ -5,9 +5,11 @@ import socket
 import subprocess
 import requests
 import re
-from datetime import datetime
+import concurrent.futures
+from urllib.parse import urlparse
+import datetime
 
-OUTFILE = f"digintel_report_{int(datetime.now().timestamp())}.txt"
+OUTFILE = f"digintel_report_{datetime.datetime.now().strftime('%Y-%m-%d__%H-%M-%S')}.txt"
 
 BOLD = '\033[1m'
 NORMAL = '\033[0m'
@@ -32,7 +34,7 @@ def banner():
 !@!  !!!  !!!  !!! !!@!!  !!!  !@!  !!!    !!!    !!!!!:    !!!
 !!:  !!!  !!:  :!!   !!:  !!:  !!:  !!!    !!:    !!:       !!:
 :!:  !:!  :!:  :!:   !::  :!:  :!:  !:!    :!:    :!:        :!:
- :::: ::   ::   ::: ::::   ::   ::   ::     ::     :: ::::   :: ::::
+:::: ::   ::   ::: ::::   ::   ::   ::     ::     :: ::::   :: ::::
 :: :  :   :     :: :: :   :    ::    :      :     : :: ::   : :: : :
 
 """ + NORMAL)
@@ -61,11 +63,46 @@ def banner():
     print(f"{NORMAL}Report will be save to: {GREEN}{OUTFILE}\n")
 
 def whois_lookup(domain):
+    log_and_print(f"\n{BLUE}[✓] DigIntel OSINT (Open-Source Intelligence) Reconnaissance Started on {domain}")
     log_and_print(f"\n{BLUE}[+] WHOIS Lookup:{GREEN}")
-    result = subprocess.getoutput(f"whois {domain}")
-    for line in result.splitlines():
-        if any(keyword in line for keyword in ["Domain", "Registrar", "Creation", "Name Server"]):
-            log_and_print(line.strip())
+    try:
+        result = subprocess.getoutput(f"whois {domain}")
+        if "No match" in result or len(result.strip()) < 10:
+            log_and_print(f"{RED}[!] No WHOIS info found or invalid domain.{NORMAL}")
+            return
+
+        keywords = [
+            "Domain Name", "Registrar", "Creation Date", "Updated Date",
+            "Expiry", "Expiration Date", "Name Server", "Status",
+            "Registrant", "Organization", "Country"
+        ]
+
+        parsed = []
+        for line in result.splitlines():
+            line = line.strip()
+            if any(kw in line for kw in keywords):
+                parsed.append(line)
+
+        if not parsed:
+            log_and_print(f"{RED}[!] WHOIS info found but not matching expected fields.{NORMAL}")
+        else:
+            for line in parsed:
+                log_and_print(f"{GREEN}{line}{NORMAL}")
+
+        """
+        # Optional save
+        save = input("Save WHOIS result to file? (y/n): ").lower().strip()
+        if save == 'y':
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"whois_{domain.replace('.', '_')}_{timestamp}.txt"
+            with open(filename, 'w') as f:
+                for line in parsed:
+                    f.write(line + '\n')
+            log_and_print(f"{GREEN}[✓] Output saved to {filename}{NORMAL}")
+        """
+
+    except Exception as e:
+        log_and_print(f"{RED}[X] Error performing WHOIS lookup: {e}{NORMAL}")
 
 def resolve_ip(domain):
     log_and_print(f"\n{BLUE}[+] IP Address:{GREEN}")
@@ -92,42 +129,184 @@ def dns_records(domain):
         result = subprocess.getoutput(f"dig {domain} {rtype} +short")
         log_and_print(result.strip())
 
-def subdomain_enum(domain):
-    log_and_print(f"\n{BLUE}[+] Subdomain Enumeration:{GREEN}")
-    subs = ["www", "mail", "dev", "test", "api", "admin", "shop", "ftp", "ns1", "ns2", "blog", "staging", "beta"]
-    for sub in subs:
-        full = f"{sub}.{domain}"
+def is_wildcard(domain):
+    try:
+        test = f"nonexistent-{datetime.datetime.now().timestamp()}.{domain}"
+        socket.gethostbyname(test)
+        return True
+    except:
+        return False
+
+def resolve_subdomain(subdomain):
+    try:
+        ip = socket.gethostbyname(subdomain)
+        return (subdomain, ip)
+    except:
+        return None
+
+def load_wordlist(path=None):
+    default_subs = [
+        "www", "mail", "ftp", "admin", "dev", "test", "portal", "webmail",
+        "cpanel", "vpn", "ns1", "ns2", "shop", "blog", "staging", "api",
+        "beta", "secure", "server", "m", "cdn", "gw", "auth", "download"
+    ]
+
+    if path:
         try:
-            ip = socket.gethostbyname(full)
-            log_and_print(f"{full} -> {ip}")
-        except:
-            pass
+            with open(path, 'r') as f:
+                return [line.strip() for line in f if line.strip()]
+        except Exception as e:
+            log_and_print(f"{RED}[!] Error loading wordlist: {e}. Using default list.{NORMAL}")
+            return default_subs
+    else:
+        return default_subs
+
+def subdomain_enum(domain, wordlist_path=None, threads=100):
+    log_and_print(f"\n{BLUE}[+] Subdomain Enumeration:{NORMAL}")
+    wordlist = load_wordlist(wordlist_path)
+
+    # Fetch from passive sources
+    sources = {
+        "crt.sh": f"https://crt.sh/?q=%25.{domain}&output=json",
+        "rapiddns.io": f"https://rapiddns.io/subdomain/{domain}?full=1",
+        "anubis": f"https://jldc.me/anubis/subdomains/{domain}",
+        "buffer": f"https://dns.bufferover.run/dns?q=.{domain}",
+        "threatcrowd": f"https://www.threatcrowd.org/searchApi/v2/domain/report/?domain={domain}",
+    }
+
+    subdomains = set()
+
+    headers = {
+        "User-Agent": "Mozilla/5.0 (DigIntel Passive Recon)"
+    }
+
+    for name, url in sources.items():
+        try:
+            res = requests.get(url, headers=headers, timeout=10)
+            if res.status_code != 200:
+                continue
+
+            if name == "crt.sh":
+                json_data = res.json()
+                for item in json_data:
+                    sub = item.get("name_value", "")
+                    for s in sub.split('\n'):
+                        if domain in s:
+                            subdomains.add(s.strip())
+            elif name == "rapiddns.io":
+                matches = re.findall(r'<td>([\w\.-]+\.{0})</td>'.format(re.escape(domain)), res.text)
+                subdomains.update(matches)
+            elif name == "anubis":
+                json_data = res.json()
+                subdomains.update(json_data)
+            elif name == "buffer":
+                json_data = res.json()
+                found = json_data.get("FDNS_A", []) + json_data.get("RDNS", [])
+                for item in found:
+                    parts = item.split(',')
+                    if len(parts) == 2:
+                        sub = parts[1]
+                        if domain in sub:
+                            subdomains.add(sub)
+            elif name == "threatcrowd":
+                json_data = res.json()
+                subdomains.update(json_data.get("subdomains", []))
+
+        except Exception as e:
+            log_and_print(f"{RED}[!] Error fetching from {name}: {e}{NORMAL}")
+
+    # Add wordlist-based brute force
+    wordlist_subs = [f"{sub}.{domain}" for sub in wordlist]
+    subdomains.update(wordlist_subs)
+
+    # Filter and resolve subdomains
+    resolved = []
+
+    if is_wildcard(domain):
+        log_and_print(f"{GREEN}[!] Wildcard DNS detected. Results may include false positives.{NORMAL}")
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+        futures = {executor.submit(resolve_subdomain, sub): sub for sub in subdomains}
+        for future in concurrent.futures.as_completed(futures):
+            result = future.result()
+            if result:
+                sub, ip = result
+                log_and_print(f"{GREEN}{sub} -> {ip}{NORMAL}")
+                resolved.append((sub, ip))
+
+    if not resolved:
+        log_and_print(f"{RED}[-] No subdomains resolved.{NORMAL}")
 
 def http_headers(domain):
-    log_and_print(f"\n{BLUE}[+] HTTP Headers:{GREEN}")
-    try:
-        res = requests.head(f"http://{domain}", timeout=5)
-        for k, v in res.headers.items():
-            if k.lower().startswith(("server", "content-type", "x-")):
+    def get_headers(url):
+        try:
+            res = requests.head(url, timeout=5, allow_redirects=True)
+            if res.status_code >= 400 or not res.headers:
+                # Fallback to GET if HEAD fails or returns empty
+                res = requests.get(url, timeout=5, allow_redirects=True)
+            return res
+        except requests.RequestException:
+            return None
+
+    print(f"\n{BLUE}[+] HTTP Headers:")
+    urls = [f"http://{domain}", f"https://{domain}"]
+    for url in urls:
+        res = get_headers(url)
+        if not res:
+            log_and_print(f"{RED}[-] Failed to fetch headers from {url}{GREEN}")
+            continue
+
+        parsed = urlparse(res.url)
+        log_and_print(f"{GREEN}[✓] Connected to: {parsed.scheme}://{parsed.netloc}{GREEN}")
+        headers = res.headers
+
+        security_headers = [
+            'Strict-Transport-Security', 'Content-Security-Policy', 'X-Frame-Options',
+            'X-XSS-Protection', 'X-Content-Type-Options', 'Referrer-Policy', 'Permissions-Policy'
+        ]
+        log_and_print(f"\n{BLUE}--- Security Headers ---{GREEN}")
+        for h in security_headers:
+            if h in headers:
+                log_and_print(f"{GREEN}{h}: {headers[h]}{NORMAL}")
+
+        log_and_print(f"\n{BLUE}--- Server / Tech Info ---{NORMAL}")
+        for k in headers:
+            if k.lower().startswith(('server', 'x-powered-by')):
+                log_and_print(f"{k}: {headers[k]}")
+
+        log_and_print(f"\n{BLUE}--- Content Headers ---{NORMAL}")
+        for k in headers:
+            if k.lower().startswith(('content-type', 'content-encoding', 'cache-control')):
+                log_and_print(f"{k}: {headers[k]}")
+
+        log_and_print(f"\n{BLUE}--- Other Headers ---{NORMAL}")
+        known = [h.lower() for h in security_headers + ['server', 'x-powered-by', 'content-type', 'content-encoding', 'cache-control']]
+        for k, v in headers.items():
+            if k.lower() not in known:
                 log_and_print(f"{k}: {v}")
-    except Exception as e:
-        log_and_print(f"Error: {e}")
+        break
 
 def ask_nmap_mode():
     print(f"""{CYAN}
 Choose Nmap Scan Type:
-[0] Default
-[1] Top 1000 Ports Scan (fast)
+[0] Default Scan (Quick overview)
+[1] Top 1000 Ports Scan (Fast)
 [2] Full TCP Scan with Version Detection
-[3] Full TCP & UDP Scan (slow)
-[4] OS Fingerprinting
+[3] Full TCP & UDP Scan (Slow)
+[4] OS Detection
+[5] Vulnerability Scan (--script vuln)
+[6] Evasion Scan (Firewall/IDS bypass)
+[7] Aggressive Full Scan (-A)
+[8] WAF Detection (--script http-waf*)
+[9] WAF Bypass Web Scan
+[10] Custom Command
 """)
-    choice = input("Select an option [0-4]: ").strip()
+    choice = input("Select an option [0-8]: ").strip()
     print(f"{NORMAL}")
     return choice
 
 def nmap_scan(ip):
-    log_and_print(f"\n{BLUE}[+] NMAP Scan:{GREEN}")
+    log_and_print(f"\n{BLUE}[+] Nmap Scan Initiated at {datetime.datetime.now().strftime('%Y-%m-%d_%H:%M:%S')}:{GREEN}")
     scan_type = ask_nmap_mode()
     if scan_type == '0':
         command = f"nmap -v {ip}"
@@ -139,13 +318,41 @@ def nmap_scan(ip):
         command = f"nmap -v -sS -sU -T4 -p- {ip}"
     elif scan_type == '4':
         command = f"nmap -v -O {ip}"
+    elif scan_type == '5':
+        command = f"nmap -sV --script vuln -T4 {ip}"
+    elif scan_type == '6':
+        command = f"nmap -f -D RND:10 -T2 -Pn -v {ip}"  # Frag packets, decoys, stealth
+    elif scan_type == '7':
+        command = f"nmap -A -T4 {ip}"  # Aggressive full scan
+    elif scan_type == '8':
+        command = f"nmap -p 80,443 --script http-waf-detect,http-waf-fingerprint -Pn -T4 -v {ip}"
+    elif scan_type == '9':
+        # WAF bypass: fragmentation, decoys, slow timing, spoofed UA
+        command = f"nmap -sS -T2 -Pn -f -D RND:10 -p 80,443 --script=http-enum,http-methods,http-title -v {ip}"
+    elif scan_type == '10':
+        command = input("Enter custom Nmap command: ").strip()
     else:
-        log_and_print("Invalid selection. Scan skipped.")
+        log_and_print(f"{RED}[-] Invalid selection. Scan aborted.")
         return
 
     log_and_print(f"{GREEN}Running: {command}\n")
-    result = subprocess.getoutput(command)
-    log_and_print(result)
+    try:
+        result = subprocess.getoutput(command)
+        log_and_print(result)
+
+        """ 
+        #Optional: Save to file
+        save = input(f"\n{CYAN}Save output to file? (y/n): {NORMAL}").lower().strip()
+        if save == 'y':
+            timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+            filename = f"nmap_scan_{ip.replace('.', '_')}_{timestamp}.txt"
+            with open(filename, 'w') as f:
+                f.write(result)
+            log_and_print(f"{GREEN}[✓] Output saved to {filename}{NORMAL}")
+        """
+
+    except Exception as e:
+        log_and_print(f"{RED}[!] Error running Nmap: {e}{NORMAL}")
 
 def main():
     try:
@@ -159,7 +366,7 @@ def main():
                 subdomain_enum(domain)
                 http_headers(domain)
                 nmap_scan(ip)
-        log_and_print(f"\n{BLUE}{BOLD}[✓] DigIntel Reconnaissance Complete. Report saved to {OUTFILE}{NORMAL}")
+        log_and_print(f"\n{BLUE}{BOLD}[✓] DigIntel OSINT (Open-Source Intelligence) Reconnaissance Complete. Report saved to {OUTFILE}{NORMAL}")
     except KeyboardInterrupt:
         print(f"\n\n{RED}[!] Scan canceled. Partial results saved to {OUTFILE}.{NORMAL}")
         exit(0)
